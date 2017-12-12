@@ -1,0 +1,10 @@
+
+accountSetting:
+  facebookAppId:  # place your facebook app id here for crawling facebook posts.
+  facebookAppSecret:  # place your facebook app secret here for crawling facebook posts.
+
+
+newsSource:
+  facebookPage:
+    - name: # facebook page's name
+      id: # facebook page's id to crawl

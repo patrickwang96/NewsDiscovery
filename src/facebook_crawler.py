@@ -1,5 +1,16 @@
-#!/python/ENV/bin/python
+#!/user/bin/env python
 # coding: utf-8
+
+__author__ = 'WANG Ruochen'
+__copyright__ = 'Copyright 2017, NewsDiscovery'
+__credits__ = ['WANG Ruoche']
+
+__license__ = 'GPL 3.0'
+__version__ = '0.1'
+__maintainer__ = 'WANG Ruochen'
+__email__ = 'ruochwang@gmail.com'
+
+from . import setting
 
 import urllib2
 import json
@@ -8,12 +19,12 @@ import pandas as pd
 # import numpy as np
 # import glob
 import logging
-logging.basicConfig(filename='log/heat_topic_discover.log', level=logging.DEBUG)
 
+logging.basicConfig(filename='log/web_crawler.log', level=logging.DEBUG)
 
 # Define some variables
-app_id = '447967258885033'
-app_secret = '2c17aac0ec2b4ee668ee8ec84fe931e4'
+app_id, app_secret = setting.load_facebook_account()
+
 access_token = app_id + "|" + app_secret
 query_num = 10
 recent = 5
@@ -50,20 +61,19 @@ def request_until_succeed(url):
             if response.getcode() == 200:
                 success = True
                 break
-        except Exception, e:
-            logging.error(e)
+        except NoMessageError:
+            logging.error(NoMessageError)
             count = count + 1
 
     if success is False:
         # If failed to may connection, just pass an empty dict
         return '{"posts":""}'
         # logging.error("Error for URL %s: %s" % (url, datetime.datetime.now()))
-        
+
     return response.read()
 
 
 def get_facebook_page_id_data(page_id, num_statuses):
-
     """This method will crawl 'num_statuses' number of posts from 'page_id'"""
     base = 'https://graph.facebook.com'
     node = '/v2.9/' + str(page_id)
@@ -73,7 +83,7 @@ def get_facebook_page_id_data(page_id, num_statuses):
 
     response = request_until_succeed(url)
     if response != '':
-        data = json.loads(response).get('posts','')
+        data = json.loads(response).get('posts', '')
     else:
         return ''
 
@@ -81,7 +91,6 @@ def get_facebook_page_id_data(page_id, num_statuses):
 
 
 def parse_time(raw):
-
     # just for parsing string into proper time format
 
     published = datetime.datetime.strptime(raw, '%Y-%m-%dT%H:%M:%S+0000')
@@ -108,7 +117,6 @@ def parse_posts(post):
 
 
 def process_facebook_data(posts):
-
     response_data = []
     if posts == '':
         return pd.DataFrame()
@@ -116,12 +124,11 @@ def process_facebook_data(posts):
 
     for post in posts['data']:
         response_data.append(parse_posts(post))
-        
+
     return pd.DataFrame(response_data)
 
 
 def get_result_df(num=query_num):
-
     # first load ids from our 'source.csv'
     ids = pd.read_csv('source.csv')
     total = pd.DataFrame()
@@ -147,29 +154,10 @@ def parse_news_df(df, time_delta=recent):
     time_bound = datetime.datetime.now() - datetime.timedelta(days=time_delta)
 
     result = result[result['time'] > time_bound]
-    result['postid'] = range(1, result.shape[0]+1)
+    result['postid'] = range(1, result.shape[0] + 1)
     result.set_index('postid', inplace=True)
 
     return result
-
-
-# deprecated baseline method
-# def get_base_line():
-#
-#     # even though this method is implement here,
-#     # it is actually called in create_baseline.py
-#     # on a daily basis
-#
-#     baseline = get_result_df(num=baseline_post_num)
-#     base_gb = baseline.groupby('source')
-#     mean = base_gb.mean()
-#     mean.columns = ['comment_mean', 'like_mean', 'share_mean']
-#     std = base_gb.std()
-#     std.columns = ['comment_std', 'like_std', 'share_std']
-#     std[std == 0] = 1
-#     now = datetime.datetime.now()
-#     mean.to_csv('baseline/' + now.ctime() + '_mean.csv', encoding='utf-8')
-#     std.to_csv('baseline/' + now.ctime() + '_std.csv', encoding='utf-8')
 
 
 if __name__ == "__main__":
@@ -190,4 +178,3 @@ if __name__ == "__main__":
     result.sort_values('popularity', ascending=False).to_csv('/hdd/import/data/fb_threads/raw/' + now.ctime()
                                                              + '_report.csv', index=False, encoding='utf-8')
     logging.info(now.ctime() + '_report.csv(all posts) has been stored in past_report folder.')
-
